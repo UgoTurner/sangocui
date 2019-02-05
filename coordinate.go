@@ -1,4 +1,4 @@
-package sangocui
+package songocui
 
 // Coordinate : x, y of the top left and x, y of the bottom right of a panel
 type Coordinate struct {

@@ -1,4 +1,4 @@
-package sangocui
+package songocui
 
 // SelectionColor : Colors according the state of the selection
 type SelectionColor struct {

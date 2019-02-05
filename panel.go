@@ -1,11 +1,11 @@
-package sangocui
+package songocui
 
 type Panel struct {
-	Title                                         string
-	Name                                          string
-	Highlight, Frame, Overwrite, Hidden, Editable bool
-	Coordinate                                    Coordinate
-	SelectionColor                                SelectionColor
+	Title                                               string
+	Name                                                string
+	Highlight, Frame, Overwrite, Hidden, Editable, Wrap bool
+	Coordinate                                          Coordinate
+	SelectionColor                                      SelectionColor
 }
 
 // EnableSelection : Set the current selection colors to "active"

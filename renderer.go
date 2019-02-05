@@ -1,4 +1,4 @@
-package sangocui
+package songocui
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
-func (s *Sangocui) CreateViews() []*gocui.View {
+func (s *Songocui) CreateViews() []*gocui.View {
 	var views []*gocui.View
 
 	for _, pan := range s.panels {
@@ -26,7 +26,7 @@ func (s *Sangocui) CreateViews() []*gocui.View {
 	return views
 }
 
-func (s *Sangocui) CreateView(p *Panel) *gocui.View {
+func (s *Songocui) CreateView(p *Panel) *gocui.View {
 
 	v, err := s.g.SetView(
 		p.Name,
@@ -45,28 +45,38 @@ func (s *Sangocui) CreateView(p *Panel) *gocui.View {
 	v.Frame = p.Frame
 	v.Title = p.Title
 	v.Editable = p.Editable
-	v.Wrap = true
+	v.Wrap = p.Wrap
 	v.Overwrite = p.Overwrite
 
 	return v
 }
 
-func (s *Sangocui) UpdateListView(viewName string, data []string) {
+func getWhiteSpaces(width int) string {
+	var ws string
+	for i := 0; i < width; i++ {
+		ws += " "
+	}
+
+	return ws
+}
+
+func (s *Songocui) UpdateListView(viewName string, data []string) {
 	go s.g.Update(func(g *gocui.Gui) error {
 		v, err := g.View(viewName)
 		if err != nil {
 			// handle error
 		}
 		v.Clear()
+		width, _ := v.Size()
 		for _, item := range data {
-			fmt.Fprintln(v, item)
+			fmt.Fprintln(v, item+getWhiteSpaces(width))
 		}
 
 		return nil
 	})
 }
 
-func (s *Sangocui) UpdateTextView(viewName string, data string) error {
+func (s *Songocui) UpdateTextView(viewName string, data string) error {
 	go s.g.Update(func(g *gocui.Gui) error {
 		v, err := g.View(viewName)
 		if err != nil {
@@ -80,7 +90,7 @@ func (s *Sangocui) UpdateTextView(viewName string, data string) error {
 	return nil
 }
 
-func (s *Sangocui) CursorDown(viewName string) error {
+func (s *Songocui) CursorDown(viewName string) error {
 	v, err := s.g.View(viewName)
 	if err != nil {
 		return err
@@ -97,7 +107,7 @@ func (s *Sangocui) CursorDown(viewName string) error {
 	return nil
 }
 
-func (s *Sangocui) CursorUp(viewName string) error {
+func (s *Songocui) CursorUp(viewName string) error {
 	v, err := s.g.View(viewName)
 	if err != nil {
 		return err
@@ -112,7 +122,7 @@ func (s *Sangocui) CursorUp(viewName string) error {
 	return nil
 }
 
-func (s *Sangocui) ResetCursor(viewName string) error {
+func (s *Songocui) ResetCursor(viewName string) error {
 	v, err := s.g.View(viewName)
 	if err != nil {
 		return err
@@ -124,7 +134,7 @@ func (s *Sangocui) ResetCursor(viewName string) error {
 	return nil
 }
 
-func (s *Sangocui) getPanelByViewName(viewName string) *Panel {
+func (s *Songocui) getPanelByViewName(viewName string) *Panel {
 	for i, p := range s.panels {
 		if p.Name == viewName {
 			return s.panels[i]
@@ -134,7 +144,7 @@ func (s *Sangocui) getPanelByViewName(viewName string) *Panel {
 	return nil
 }
 
-func (s *Sangocui) EnableSelection(viewName string) error {
+func (s *Songocui) EnableSelection(viewName string) error {
 	pan := s.getPanelByViewName(viewName)
 	if pan == nil {
 		return nil
@@ -143,7 +153,7 @@ func (s *Sangocui) EnableSelection(viewName string) error {
 	return nil
 }
 
-func (s *Sangocui) DisableSelection(viewName string) error {
+func (s *Songocui) DisableSelection(viewName string) error {
 	pan := s.getPanelByViewName(viewName)
 	if pan == nil {
 		return nil
@@ -152,25 +162,25 @@ func (s *Sangocui) DisableSelection(viewName string) error {
 	return nil
 }
 
-func (s *Sangocui) Quit() error {
+func (s *Songocui) Quit() error {
 	return gocui.ErrQuit
 }
 
-func (s *Sangocui) GetCurrentLine(v *gocui.View) string {
+func (s *Songocui) GetCurrentLine(v *gocui.View) string {
 	_, cursorY := v.Cursor()
 	l, _ := v.Line(cursorY)
 
 	return l
 }
 
-func (s *Sangocui) GetNextLine(v *gocui.View) string {
+func (s *Songocui) GetNextLine(v *gocui.View) string {
 	_, cursorY := v.Cursor()
 	l, _ := v.Line(cursorY + 1)
 
 	return l
 }
 
-func (s *Sangocui) Focus(viewName string) error {
+func (s *Songocui) Focus(viewName string) error {
 	if _, err := s.g.SetCurrentView(viewName); err != nil {
 		log.Panicln("Try to focus on " + viewName)
 		return err
@@ -179,7 +189,7 @@ func (s *Sangocui) Focus(viewName string) error {
 	return nil
 }
 
-func (s *Sangocui) Show(viewName string) error {
+func (s *Songocui) Show(viewName string) error {
 	pan := s.getPanelByViewName(viewName)
 	if pan == nil {
 		return nil
@@ -190,7 +200,7 @@ func (s *Sangocui) Show(viewName string) error {
 	return nil
 }
 
-func (s *Sangocui) Hide(viewName string) error {
+func (s *Songocui) Hide(viewName string) error {
 	pan := s.getPanelByViewName(viewName)
 	if pan == nil {
 		return nil
@@ -201,7 +211,7 @@ func (s *Sangocui) Hide(viewName string) error {
 	return nil
 }
 
-func (s *Sangocui) GetCurrentBuffer(viewName string) string {
+func (s *Songocui) GetCurrentBuffer(viewName string) string {
 	v, err := s.g.View(viewName)
 	if err != nil {
 		log.Panicln("View not found")

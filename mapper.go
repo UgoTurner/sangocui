@@ -1,4 +1,4 @@
-package sangocui
+package songocui
 
 import (
 	"github.com/jroimartin/gocui"
