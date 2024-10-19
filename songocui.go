@@ -6,16 +6,15 @@ import (
 	"log"
 
 	"github.com/sirupsen/logrus"
-
 	"github.com/jroimartin/gocui"
 )
 
-// Subscriber : Structs binding Songocui event must implements this interface
+// Subscriber defines the interface for Songocui event subscribers.
 type Subscriber interface {
 	On(string) error
 }
 
-// Songocui : Wrapper for Gocui
+// Songocui is a wrapper for gocui.
 type Songocui struct {
 	g           *gocui.Gui
 	panels      []*Panel
@@ -23,111 +22,117 @@ type Songocui struct {
 	logger      *logrus.Logger
 }
 
-// NewWithLogger : Instanciate a new Songocui object with a logger
+// NewWithLogger creates a new Songocui instance with a logger.
 func NewWithLogger(logger *logrus.Logger) *Songocui {
 	return &Songocui{logger: logger}
 }
 
-/* Configure : Create keybinds and panels according conf files
-   and view name to focus on at start
-*/
-func (s *Songocui) Configure(pathConfViews, pathconfKeybinds, defaultFocus string) {
-	var err error
-	s.g, err = gocui.NewGui(gocui.OutputNormal)
+// Configure sets up keybindings and panels based on configuration files and sets the default view focus.
+func (s *Songocui) Configure(pathConfViews, pathConfKeybinds, defaultFocus string) {
+	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
-		log.Panicln("Error when creating GUI")
+		log.Panicln("Error creating GUI:", err)
 	}
-	s.g.SetManagerFunc(
-		func(gg *gocui.Gui) error {
-			s.CreateViews()
-			// Focus on side view if no current view
-			if gg.CurrentView() == nil {
-				if _, err := gg.SetCurrentView(defaultFocus); err != nil {
-					log.Panicln(err)
-				}
+	s.g = g
+
+	s.g.SetManagerFunc(func(gg *gocui.Gui) error {
+		s.CreateViews()
+		if gg.CurrentView() == nil {
+			if _, err := gg.SetCurrentView(defaultFocus); err != nil {
+				log.Panicln("Error setting default focus view:", err)
 			}
-			return nil
-		},
-	)
+		}
+		return nil
+	})
+
 	maxX, maxY := s.g.Size()
 	s.panels = s.loadPanels(pathConfViews, maxX, maxY)
-	s.CreateKeybinds(s.loadKeybinds(pathconfKeybinds))
+	s.CreateKeybinds(s.loadKeybinds(pathConfKeybinds))
 }
 
+// Boot starts the main GUI loop and dispatches the "Launch" event.
 func (s *Songocui) Boot() {
 	s.dispatch("Launch")
 	defer s.g.Close()
+
 	if err := s.g.MainLoop(); err != nil && err != gocui.ErrQuit {
-		log.Panic(err)
+		log.Panicln("Main loop error:", err)
 	}
 }
 
+// loadPanels loads the panel configurations from a JSON file and scales their coordinates.
 func (s *Songocui) loadPanels(path string, maxX, maxY int) []*Panel {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Panicln("Error when opening json file")
+		log.Panicln("Error reading panel config file:", err)
 	}
+
 	var panels []*Panel
-	json.Unmarshal(data, &panels)
-	for i := range panels {
-		panels[i].Coordinate.Scale(maxX, maxY)
+	if err := json.Unmarshal(data, &panels); err != nil {
+		log.Panicln("Error unmarshalling panel config:", err)
+	}
+
+	for _, panel := range panels {
+		panel.Coordinate.Scale(maxX, maxY)
 	}
 
 	return panels
 }
 
+// RegisterSubscribers registers a list of subscribers for event dispatching.
 func (s *Songocui) RegisterSubscribers(subscribers []Subscriber) {
 	s.subscribers = subscribers
 }
 
+// dispatch sends an event to all registered subscribers.
 func (s *Songocui) dispatch(eventName string) error {
-	for i := range s.subscribers {
-		err := s.subscribers[i].On(eventName)
-		if err != nil {
+	for _, sub := range s.subscribers {
+		if err := sub.On(eventName); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
+// loadKeybinds loads keybinding configurations from a JSON file.
 func (s *Songocui) loadKeybinds(path string) []confViewsKeybind {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		log.Panicln(err)
+		log.Panicln("Error reading keybind config file:", err)
 	}
-	var viewsKeybinds = []confViewsKeybind{}
-	json.Unmarshal(data, &viewsKeybinds)
+
+	var viewsKeybinds []confViewsKeybind
+	if err := json.Unmarshal(data, &viewsKeybinds); err != nil {
+		log.Panicln("Error unmarshalling keybind config:", err)
+	}
 
 	return viewsKeybinds
 }
 
+// CreateKeybinds sets up keybindings for the views based on the loaded configurations.
+func (s *Songocui) CreateKeybinds(viewsKeybinds []confViewsKeybind) {
+	for _, ckb := range viewsKeybinds {
+		for _, kb := range ckb.Keybinds {
+			viewName, key, action := ckb.ViewName, kb.Key, kb.Action
+			s.logger.Infof("Registering keybind for %s: %s -> %s", viewName, key, action)
+			if err := s.g.SetKeybinding(viewName, KeyStrToCode(key), gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
+				s.logger.Infof("Dispatching action '%s' in view '%s'", action, v.Name())
+				return s.dispatch(action)
+			}); err != nil {
+				log.Panicln("Error setting keybinding:", err)
+			}
+		}
+	}
+}
+
+// confViewsKeybind holds the view name and associated keybindings.
 type confViewsKeybind struct {
 	ViewName string
 	Keybinds []confKeybind
 }
 
+// confKeybind holds the key-action pair for keybinding configuration.
 type confKeybind struct {
 	Key    string
 	Action string
-}
-
-func (s *Songocui) CreateKeybinds(viewsKeybinds []confViewsKeybind) {
-	for _, ckb := range viewsKeybinds {
-		for _, kb := range ckb.Keybinds {
-			viewName := ckb.ViewName
-			key := kb.Key
-			action := kb.Action
-			s.logger.Info("Registering for " + ckb.ViewName + ": " + kb.Key + " --- " + kb.Action)
-			s.g.SetKeybinding(
-				viewName,
-				KeyStrToCode(key),
-				gocui.ModNone,
-				func(g *gocui.Gui, v *gocui.View) error {
-					s.logger.Info("Dispatch " + action + "in view " + v.Name())
-					return s.dispatch(action)
-				},
-			)
-		}
-	}
 }
